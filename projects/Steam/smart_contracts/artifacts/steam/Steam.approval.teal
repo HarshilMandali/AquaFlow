@@ -1,0 +1,484 @@
+#pragma version 10
+
+smart_contracts.steam.contract.Steam.approval_program:
+    callsub __puya_arc4_router__
+    return
+
+
+// smart_contracts.steam.contract.Steam.__puya_arc4_router__() -> uint64:
+__puya_arc4_router__:
+    proto 0 1
+    txn NumAppArgs
+    bz __puya_arc4_router___after_if_else@12
+    method "createApplication()void"
+    method "startStream(account,uint64,uint64)void"
+    method "withdraw()void"
+    method "stopStream()void"
+    method "getStreamEndTime()uint64"
+    method "getWithdrawAmount()uint64"
+    method "deleteContract()void"
+    txna ApplicationArgs 0
+    match __puya_arc4_router___createApplication_route@2 __puya_arc4_router___startStream_route@3 __puya_arc4_router___withdraw_route@4 __puya_arc4_router___stopStream_route@5 __puya_arc4_router___getStreamEndTime_route@6 __puya_arc4_router___getWithdrawAmount_route@7 __puya_arc4_router___deleteContract_route@8
+    int 0
+    retsub
+
+__puya_arc4_router___createApplication_route@2:
+    txn OnCompletion
+    !
+    assert // OnCompletion is NoOp
+    txn ApplicationID
+    !
+    assert // is creating
+    callsub createApplication
+    int 1
+    retsub
+
+__puya_arc4_router___startStream_route@3:
+    txn OnCompletion
+    !
+    assert // OnCompletion is NoOp
+    txn ApplicationID
+    assert // is not creating
+    txna ApplicationArgs 1
+    btoi
+    txnas Accounts
+    txna ApplicationArgs 2
+    btoi
+    txna ApplicationArgs 3
+    btoi
+    callsub startStream
+    int 1
+    retsub
+
+__puya_arc4_router___withdraw_route@4:
+    txn OnCompletion
+    !
+    assert // OnCompletion is NoOp
+    txn ApplicationID
+    assert // is not creating
+    callsub withdraw
+    int 1
+    retsub
+
+__puya_arc4_router___stopStream_route@5:
+    txn OnCompletion
+    !
+    assert // OnCompletion is NoOp
+    txn ApplicationID
+    assert // is not creating
+    callsub stopStream
+    int 1
+    retsub
+
+__puya_arc4_router___getStreamEndTime_route@6:
+    txn OnCompletion
+    !
+    assert // OnCompletion is NoOp
+    txn ApplicationID
+    assert // is not creating
+    callsub getStreamEndTime
+    itob
+    byte 0x151f7c75
+    swap
+    concat
+    log
+    int 1
+    retsub
+
+__puya_arc4_router___getWithdrawAmount_route@7:
+    txn OnCompletion
+    !
+    assert // OnCompletion is NoOp
+    txn ApplicationID
+    assert // is not creating
+    callsub getWithdrawAmount
+    itob
+    byte 0x151f7c75
+    swap
+    concat
+    log
+    int 1
+    retsub
+
+__puya_arc4_router___deleteContract_route@8:
+    txn OnCompletion
+    int DeleteApplication
+    ==
+    assert // OnCompletion is DeleteApplication
+    txn ApplicationID
+    assert // is not creating
+    callsub deleteContract
+    int 1
+    retsub
+
+__puya_arc4_router___after_if_else@12:
+    int 0
+    retsub
+
+
+// smart_contracts.steam.contract.Steam.createApplication() -> void:
+createApplication:
+    proto 0 0
+    byte "streamRate"
+    int 0
+    app_global_put
+    byte "startTime"
+    int 0
+    app_global_put
+    byte "endTime"
+    int 0
+    app_global_put
+    byte "withdrawnAmount"
+    int 0
+    app_global_put
+    byte "recipient"
+    global CreatorAddress
+    app_global_put
+    byte "balance"
+    int 0
+    app_global_put
+    byte "isStreaming"
+    int 0
+    app_global_put
+    byte "last_start_time"
+    int 0
+    app_global_put
+    byte "last_withdrawal_time"
+    int 0
+    app_global_put
+    byte "last_withdrawal_Amount"
+    int 0
+    app_global_put
+    retsub
+
+
+// smart_contracts.steam.contract.Steam.startStream(recipient: bytes, rate: uint64, amount: uint64) -> void:
+startStream:
+    proto 3 0
+    txn Sender
+    global CreatorAddress
+    ==
+    assert
+    int 0
+    byte "isStreaming"
+    app_global_get_ex
+    assert // check self.isStreaming exists
+    !
+    assert
+    byte "recipient"
+    frame_dig -3
+    app_global_put
+    byte "streamRate"
+    frame_dig -2
+    app_global_put
+    byte "startTime"
+    global LatestTimestamp
+    app_global_put
+    byte "withdrawnAmount"
+    int 0
+    app_global_put
+    int 0
+    byte "balance"
+    app_global_get_ex
+    assert // check self.balance exists
+    frame_dig -1
+    +
+    byte "balance"
+    swap
+    app_global_put
+    byte "isStreaming"
+    int 1
+    app_global_put
+    frame_dig -1
+    frame_dig -2
+    /
+    int 0
+    byte "startTime"
+    app_global_get_ex
+    assert // check self.startTime exists
+    +
+    byte "endTime"
+    swap
+    app_global_put
+    int 0
+    byte "startTime"
+    app_global_get_ex
+    assert // check self.startTime exists
+    byte "last_start_time"
+    swap
+    app_global_put
+    int 0
+    byte "last_start_time"
+    app_global_get_ex
+    assert // check self.last_start_time exists
+    assert // Start time must be greater than 0
+    retsub
+
+
+// smart_contracts.steam.contract.Steam.withdraw() -> void:
+withdraw:
+    proto 0 0
+    txn Sender
+    int 0
+    byte "recipient"
+    app_global_get_ex
+    assert // check self.recipient exists
+    ==
+    assert
+    callsub _calculateStreamedAmount
+    pop
+    callsub _calculateStreamedAmount
+    dup
+    int 0
+    byte "balance"
+    app_global_get_ex
+    assert // check self.balance exists
+    >
+    bz withdraw_else_body@2
+    int 0
+    byte "balance"
+    app_global_get_ex
+    assert // check self.balance exists
+    b withdraw_after_if_else@3
+
+withdraw_else_body@2:
+    frame_dig 0
+
+withdraw_after_if_else@3:
+    global LatestTimestamp
+    int 0
+    byte "last_withdrawal_time"
+    app_global_get_ex
+    assert // check self.last_withdrawal_time exists
+    -
+    int 2
+    >=
+    assert // Withdrawal can only occur every 2 seconds
+    byte "last_withdrawal_time"
+    global LatestTimestamp
+    app_global_put
+    dup
+    assert // No available funds to withdraw
+    int 0
+    byte "withdrawnAmount"
+    app_global_get_ex
+    assert // check self.withdrawnAmount exists
+    dig 1
+    +
+    byte "withdrawnAmount"
+    swap
+    app_global_put
+    int 0
+    byte "balance"
+    app_global_get_ex
+    assert // check self.balance exists
+    dig 1
+    -
+    byte "balance"
+    swap
+    app_global_put
+    itxn_begin
+    global CurrentApplicationAddress
+    int 0
+    byte "recipient"
+    app_global_get_ex
+    assert // check self.recipient exists
+    int pay
+    itxn_field TypeEnum
+    byte 0x5769746864726177616c2066726f6d20636f6e7472616374
+    itxn_field Note
+    uncover 2
+    itxn_field Amount
+    itxn_field Receiver
+    itxn_field Sender
+    int 0
+    itxn_field Fee
+    itxn_submit
+    retsub
+
+
+// smart_contracts.steam.contract.Steam._calculateStreamedAmount() -> uint64:
+_calculateStreamedAmount:
+    proto 0 1
+    global LatestTimestamp
+    dup
+    int 0
+    byte "endTime"
+    app_global_get_ex
+    assert // check self.endTime exists
+    >=
+    bz _calculateStreamedAmount_else_body@2
+    int 0
+    byte "balance"
+    app_global_get_ex
+    assert // check self.balance exists
+    int 0
+    byte "withdrawnAmount"
+    app_global_get_ex
+    assert // check self.withdrawnAmount exists
+    +
+    b _calculateStreamedAmount_after_if_else@3
+
+_calculateStreamedAmount_else_body@2:
+    int 0
+    byte "startTime"
+    app_global_get_ex
+    assert // check self.startTime exists
+    frame_dig 0
+    swap
+    -
+    int 0
+    byte "streamRate"
+    app_global_get_ex
+    assert // check self.streamRate exists
+    *
+
+_calculateStreamedAmount_after_if_else@3:
+    int 0
+    byte "withdrawnAmount"
+    app_global_get_ex
+    assert // check self.withdrawnAmount exists
+    -
+    swap
+    retsub
+
+
+// smart_contracts.steam.contract.Steam.stopStream() -> void:
+stopStream:
+    proto 0 0
+    byte ""
+    txn Sender
+    global CreatorAddress
+    ==
+    assert
+    callsub _calculateStreamedAmount
+    dup
+    bz stopStream_after_if_else@3
+    itxn_begin
+    global CurrentApplicationAddress
+    int 0
+    byte "recipient"
+    app_global_get_ex
+    assert // check self.recipient exists
+    int pay
+    itxn_field TypeEnum
+    byte 0x46696e616c207061796d656e7420746f20726563697069656e74
+    itxn_field Note
+    frame_dig 1
+    itxn_field Amount
+    itxn_field Receiver
+    itxn_field Sender
+    int 0
+    itxn_field Fee
+    itxn_submit
+
+stopStream_after_if_else@3:
+    int 0
+    byte "balance"
+    app_global_get_ex
+    assert // check self.balance exists
+    frame_dig 1
+    -
+    dup
+    frame_bury 0
+    bz stopStream_after_if_else@6
+    itxn_begin
+    global CurrentApplicationAddress
+    global CreatorAddress
+    int pay
+    itxn_field TypeEnum
+    byte 0x52656d61696e696e672066756e64732072657475726e656420746f2063726561746f72
+    itxn_field Note
+    frame_dig 0
+    itxn_field Amount
+    itxn_field Receiver
+    itxn_field Sender
+    int 0
+    itxn_field Fee
+    itxn_submit
+
+stopStream_after_if_else@6:
+    byte "streamRate"
+    int 0
+    app_global_put
+    byte "balance"
+    int 0
+    app_global_put
+    byte "isStreaming"
+    int 0
+    app_global_put
+    retsub
+
+
+// smart_contracts.steam.contract.Steam.getStreamEndTime() -> uint64:
+getStreamEndTime:
+    proto 0 1
+    int 0
+    byte "endTime"
+    app_global_get_ex
+    assert // check self.endTime exists
+    retsub
+
+
+// smart_contracts.steam.contract.Steam.getWithdrawAmount() -> uint64:
+getWithdrawAmount:
+    proto 0 1
+    callsub _calculateStreamedAmount
+    retsub
+
+
+// smart_contracts.steam.contract.Steam.deleteContract() -> void:
+deleteContract:
+    proto 0 0
+    txn Sender
+    global CreatorAddress
+    ==
+    assert
+    callsub _calculateStreamedAmount
+    dup
+    bz deleteContract_after_if_else@3
+    itxn_begin
+    global CurrentApplicationAddress
+    int 0
+    byte "recipient"
+    app_global_get_ex
+    assert // check self.recipient exists
+    int pay
+    itxn_field TypeEnum
+    byte 0x46696e616c207061796d656e7420746f20726563697069656e74
+    itxn_field Note
+    frame_dig 0
+    itxn_field Amount
+    itxn_field Receiver
+    itxn_field Sender
+    int 0
+    itxn_field Fee
+    itxn_submit
+
+deleteContract_after_if_else@3:
+    int 0
+    byte "balance"
+    app_global_get_ex
+    assert // check self.balance exists
+    frame_dig 0
+    -
+    bz deleteContract_after_if_else@6
+    itxn_begin
+    global CurrentApplicationAddress
+    global CreatorAddress
+    dup
+    itxn_field CloseRemainderTo
+    int pay
+    itxn_field TypeEnum
+    byte 0x52656d61696e696e672066756e64732072657475726e656420746f2063726561746f72
+    itxn_field Note
+    int 0
+    itxn_field Amount
+    itxn_field Receiver
+    itxn_field Sender
+    int 0
+    itxn_field Fee
+    itxn_submit
+
+deleteContract_after_if_else@6:
+    retsub

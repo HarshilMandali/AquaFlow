@@ -1,0 +1,10 @@
+# Changes here will be overwritten by Copier; NEVER EDIT MANUALLY
+_commit: 1.3.2
+_src_path: gh:algorandfoundation/algokit-python-template
+author_email: harshil.mandali@minddeft.net
+author_name: HarshilMinddeft
+contract_name: steam
+deployment_language: python
+preset_name: production
+project_name: Steam
+
